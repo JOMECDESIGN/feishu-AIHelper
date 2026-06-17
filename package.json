@@ -1,0 +1,17 @@
+{
+  "name": "echo_bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "chenli.idevlab@bytedance.com",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "^0.2.14",
+    "@larksuiteoapi/node-sdk": "^1.40.0",
+    "ai": "^4.3.16",
+    "dotenv": "^16.5.1"
+  }
+}
