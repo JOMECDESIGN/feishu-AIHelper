@@ -23,6 +23,28 @@ function formatRecords(items) {
     .join('\n');
 }
 
+function parseFieldValue(v) {
+  if (typeof v !== 'string') return v;
+  const t = v.trim();
+  if ((t.startsWith('[') || t.startsWith('{')) && (t.endsWith(']') || t.endsWith('}'))) {
+    try { return JSON.parse(t); } catch { /* keep as string */ }
+  }
+  return v;
+}
+
+function formatFieldValue(v, type) {
+  if (type === '人员') {
+    if (typeof v === 'string' && v.trim()) return [{ name: v.trim() }];
+  }
+  if (type === '附件') {
+    if (typeof v === 'string' && v.trim()) return [{ name: v.trim() }];
+  }
+  if (type === '多选') {
+    if (typeof v === 'string' && v.trim()) return v.split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+  }
+  return v;
+}
+
 export const listTablesTool = tool({
   description: '列出多维表格中的所有数据表名称。当你不确定有哪些表可用时，应首先调用此工具。',
   parameters: z.object({}),
@@ -87,7 +109,7 @@ export const createRecordTool = tool({
   description: '在指定数据表中添加一条新记录。字段名必须与表中已有字段完全匹配。如果不确定字段名，先调用 list_fields。',
   parameters: z.object({
     table_name: z.string().describe('要添加记录的数据表名称'),
-    fields: z.record(z.string(), z.string()).describe('字段名到值的映射，例如 {"姓名": "张三", "年龄": "25"}'),
+    fields: z.record(z.string(), z.any()).describe('字段名到值的映射，例如 {"姓名": "张三", "年龄": "25"}。附件等结构化字段可传 JSON 字符串'),
   }),
   execute: async ({ table_name, fields }) => {
     try {
@@ -95,7 +117,9 @@ export const createRecordTool = tool({
       const names = Object.keys(fields);
       const v = await validateFields(_client, tableId, names);
       if (!v.valid) return `以下字段不存在: ${v.missing.join(', ')}。可用字段: ${v.available.join(', ')}`;
-      const record = await createRecord(_client, tableId, fields);
+      const parsed = Object.fromEntries(Object.entries(fields).map(([k, val]) => [k, parseFieldValue(val)]));
+      const formatted = Object.fromEntries(Object.entries(parsed).map(([k, val]) => [k, formatFieldValue(val, v.fieldMap[k])]));
+      const record = await createRecord(_client, tableId, formatted);
       return `记录添加成功。record_id: ${record.record_id}`;
     } catch (e) {
       return `添加记录失败: ${e.message}`;
@@ -108,7 +132,7 @@ export const updateRecordTool = tool({
   parameters: z.object({
     table_name: z.string().describe('要更新记录的数据表名称'),
     record_id: z.string().describe('要更新的记录ID'),
-    fields: z.record(z.string(), z.string()).describe('要更新的字段名到新值的映射'),
+    fields: z.record(z.string(), z.any()).describe('要更新的字段名到新值的映射。附件等结构化字段可传 JSON 字符串'),
   }),
   execute: async ({ table_name, record_id, fields }) => {
     try {
@@ -116,7 +140,9 @@ export const updateRecordTool = tool({
       const names = Object.keys(fields);
       const v = await validateFields(_client, tableId, names);
       if (!v.valid) return `以下字段不存在: ${v.missing.join(', ')}。可用字段: ${v.available.join(', ')}`;
-      await updateRecord(_client, tableId, record_id, fields);
+      const parsed = Object.fromEntries(Object.entries(fields).map(([k, val]) => [k, parseFieldValue(val)]));
+      const formatted = Object.fromEntries(Object.entries(parsed).map(([k, val]) => [k, formatFieldValue(val, v.fieldMap[k])]));
+      await updateRecord(_client, tableId, record_id, formatted);
       return `记录 ${record_id} 更新成功`;
     } catch (e) {
       return `更新记录失败: ${e.message}`;

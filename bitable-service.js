@@ -15,7 +15,7 @@ function requireConfig() {
 }
 
 function typeLabel(type) {
-  const map = { 1: '文本', 2: '数字', 3: '单选', 4: '多选', 5: '日期', 7: '复选框', 11: '附件', 13: '网址', 15: '公式', 17: '人员', 18: '创建时间', 19: '修改时间', 20: '自动编号', 21: '关联', 22: '地理位置', 23: '群聊', 1001: '创建人', 1002: '修改人' };
+  const map = { 1: '文本', 2: '数字', 3: '单选', 4: '多选', 5: '日期', 7: '复选框', 11: '人员', 13: '网址', 15: '公式', 17: '附件', 18: '创建时间', 19: '修改时间', 20: '自动编号', 21: '关联', 22: '地理位置', 23: '群聊', 1001: '创建人', 1002: '修改人' };
   return map[type] || `类型${type}`;
 }
 
@@ -78,7 +78,11 @@ export async function validateFields(client, tableId, fieldNames) {
   const fields = await getFields(client, tableId);
   const names = new Set(fields.map((f) => f.name));
   const missing = fieldNames.filter((n) => !names.has(n));
-  return missing.length > 0 ? { valid: false, missing, available: fields.map((f) => f.name) } : { valid: true };
+  if (missing.length > 0) {
+    return { valid: false, missing, available: fields.map((f) => f.name) };
+  }
+  const fieldMap = Object.fromEntries(fields.map((f) => [f.name, f.type]));
+  return { valid: true, fieldMap };
 }
 
 export async function searchRecords(client, tableId, { filter, fieldNames } = {}) {
